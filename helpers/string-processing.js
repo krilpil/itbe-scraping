@@ -1,3 +1,3 @@
-export const removingExtraSpaces = (string) => {
-    return string.replace(/\s+/g, ' ').trim()
+export const stringProcessing = (string) => {
+    return string.replace(/\s+/g, ' ').trim().toLowerCase()
 }

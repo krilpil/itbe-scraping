@@ -2,64 +2,89 @@ import cheerio from "cheerio"
 
 import {removingLetters} from "./helpers/removing-letters.js";
 import {contentPage} from "./helpers/content-page.js";
-import {removingExtraSpaces} from "./helpers/removing-extra-spaces.js";
 import {countPages} from "./helpers/count-pages.js";
 import {dateNow} from "./helpers/date-now.js";
-import {countPrice} from "./helpers/count-price.js";
+import {categories} from "./constants/tsum.js";
+import {getColorId} from "./constants/colors.js";
+import {getBrandId} from "./constants/brands.js";
+import {setProduct} from "./helpers/set-product.js";
+import {stringSearch} from "./helpers/string-search.js";
+
 
 (async function main() {
-    const productsInfo = {
+    const siteInfo = {
         site_id: 3,
-        unique_date: dateNow()
+        unique_date: dateNow(),
+        pageProductsItems: 60
     }
-    const pageProductsItems = 60
-    const productCategory = 'https://www.tsum.ru/catalog/krossovki-19739/'
 
-    let $ = cheerio.load(
-        await contentPage(productCategory)
-    )
+    for (const sex in categories) {
+        for (const category of categories[sex]) {
+            const productCategory = `https://www.tsum.ru/catalog/${category.url}`
+            console.log(`${sex}: ${productCategory}`)
 
-    const amountPages = countPages(
-        removingLetters($('.product-list__count').text()),
-        pageProductsItems
-    )
+            let $ = cheerio.load(
+                await contentPage(productCategory)
+            )
 
-    const productLinks = []
+            const amountPages = countPages(
+                removingLetters($('.product-list__count').text()),
+                siteInfo.pageProductsItems
+            )
 
-    for (let page = 1; page <= 1; page++) {
-        let $ = cheerio.load(
-            await contentPage(`${productCategory}?page=${page}`)
-        )
+            const productLinks = []
 
-        $('.product__image-wrapper').each((index, element) => {
-            const link = `https://www.tsum.ru${$(element).attr('href')}`
-            console.log(link)
-            productLinks.push(link)
-        })
-    }
-    console.log(productLinks.length)
+            for (let page = 1; page <= 1; page++) {
+                let $
 
-    for (let link of productLinks) {
-        const $ = cheerio.load(await contentPage(link))
+                if (page === 1) {
+                    $ = cheerio.load(
+                        await contentPage(`${productCategory}`)
+                    )
+                } else {
+                    $ = cheerio.load(
+                        await contentPage(`${productCategory}?page=${page}`)
+                    )
+                }
 
-        const product = {
-            url: link,
-            site_id: productsInfo.site_id,
-            title: removingExtraSpaces($('.item__description').text()),
-            color: $('.color-switcher__subtext').text(),
-            current_price: productPrices($).currentPrice,
-            previous_price: productPrices($).previousPrice,
-            photos_url: productPhotos($),
-            unique_date: productsInfo.unique_date
+
+                $('.product__image-wrapper').each((index, element) => {
+                    const link = `https://www.tsum.ru${$(element).attr('href')}`
+                    console.log(link)
+                    productLinks.push(link)
+                })
+            }
+
+            console.log(productLinks.length)
+
+            for (let link of productLinks) {
+                const $ = cheerio.load(await contentPage(link))
+
+                const product = {
+                    url: link,
+                    sex: sex,
+                    site_id: siteInfo.site_id,
+                    title: stringSearch($, '.item__description'),
+                    category_id: category.category_id,
+                    brand_id: getBrandId(stringSearch($, '.item__specifications h1 a')),
+                    color_id: getColorId(stringSearch($, '.color-switcher__subtext')),
+                    current_price: productPrices($).currentPrice,
+                    previous_price: productPrices($).previousPrice,
+                    photos_url: productPhotos($),
+                    vk_photos: [],
+                    unique_date: siteInfo.unique_date
+                }
+
+                console.log(product)
+                await setProduct(product)
+            }
         }
-
-        console.log(product)
     }
 })()
 
 const productPrices = ($) => {
     let currentPrice = removingLetters($('.price_type_retail').text())
-    if (currentPrice > 0 ) {
+    if (currentPrice > 0) {
         return {
             currentPrice: currentPrice,
             previousPrice: 0
