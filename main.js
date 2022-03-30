@@ -75,8 +75,8 @@ import {stringSearch} from "./helpers/string-search.js";
                     unique_date: siteInfo.unique_date
                 }
 
-                console.log(product)
                 await setProduct(product)
+                console.log(product)
             }
         }
     }
@@ -87,7 +87,7 @@ const productPrices = ($) => {
     if (currentPrice > 0) {
         return {
             currentPrice: currentPrice,
-            previousPrice: 0
+            previousPrice: null
         }
     } else {
         return {
